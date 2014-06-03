@@ -124,7 +124,7 @@ class Dnsbls {
 		return '
 		<div class="progress">
 			<div class="progress-bar ' . $class . '" role="progressbar" aria-valuenow="' . $score . '" aria-valuemin="0" aria-valuemax="100" style="width: ' . $score . '%;">
-			' . $score . '
+			' . $score . '%
 			</div>
 		</div>';
 	}
