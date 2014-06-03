@@ -114,16 +114,18 @@ class Dnsbls {
 	public static function drawBar($score = 0) {
 		switch ($score) {
 			case $score <= 50:
-				$class = "progress-danger"; break;
+				$class = "progress-bar progress-bar-danger"; break;
 			case $score <= 75:
-				$class = "progress-warning"; break;
+				$class = "progress-bar-warning"; break;
 			case $score <= 100:
-				$class = "progress-success"; break;
+				$class = "progress-bar-success"; break;
 		}
 
-		return "
-		<div class=\"progress $class\">
-		<div class=\"bar\" style=\"width: $score%\">Score: $score</div>
-		</div>";
+		return '
+		<div class="progress">
+			<div class="progress-bar ' . $class . '" role="progressbar" aria-valuenow="' . $score . '" aria-valuemin="0" aria-valuemax="100" style="width: ' . $score . '%;">
+			' . $score . '
+			</div>
+		</div>';
 	}
 }
