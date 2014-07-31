@@ -17,7 +17,7 @@
 		<div class="container">
 			<div class="well">
 				<h2>DNS Blacklist and Sender Score</h2>
-				<form method="post" action="index.php" class="form-inline" autocomplete="off" role="form">
+				<form method="post" action="index.php" class="form-inline" autocomplete="on" role="form">
 					<label>IP or domain address: </label>
 					<input id="host" name="host" placeholder="Enter IP or Domain..." class="form-control" required="" >
 					<button id="submit" name="submit" class="btn btn-primary">Check Now!</button>
@@ -25,7 +25,7 @@
 				<p>* Sender Score is taken from: <a href="http://www.senderscore.org/" target="_blank">senderscore.org</a></p>
 			</div>
 			<?php
-			require_once("class.php");
+			require_once "class.php";
 			$host = !empty($_REQUEST['host']) ? $_REQUEST['host'] : null;
 
 			if (isset($host)) {
@@ -42,18 +42,18 @@
 
 					<table class="table table-striped table-bordered table-condensed table-hover">
 						<?php
-						ini_set('zlib.output_compression', 0);
-						ini_set('output_buffering', 0);
+						//ini_set('zlib.output_compression', 0);
+						//ini_set('output_buffering', 0);
 						ob_implicit_flush(true);
-						while (@ob_end_flush());//Clean buffer
+						ob_end_flush(); // Clean buffer
 						foreach (Dnsbls::$list as $rbl) {
 							$checkBl = Dnsbls::checkBl($host, $rbl);
 							if ($checkBl) {
-								echo "<tr class=\"danger\"><td>$rbl</td><td><span class=\"label label-danger\">Listed</span></td></tr>";
+								echo "<tr class=\"danger\"><td>$rbl</td><td><span class=\"label label-warning\"><span class=\"glyphicon glyphicon-warning-sign\"></span> Listed</span></td></tr>";
 							} else {
 								echo "<tr><td>$rbl</td><td><span class=\"label label-success\">OK</span></td></tr>";
 							}
-							echo str_repeat(" ", 1024), "\n";
+							echo str_repeat(" ", 4096) . PHP_EOL;
 							usleep(250000);
 						} ?>
 					</table>

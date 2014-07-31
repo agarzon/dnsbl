@@ -1,4 +1,5 @@
 <?php
+
 class Dnsbls {
 
 	public static $list = array(
@@ -107,18 +108,20 @@ class Dnsbls {
 
 	public static function checkBl($ip, $rbl) {
 		$reversedIp = self::reverseIp($ip);
-		return  $resultBl = dns_get_record($reversedIp . '.' . $rbl, DNS_TXT);
-		return !empty($resultBl);
+		return $resultBl = dns_get_record($reversedIp . '.' . $rbl, DNS_TXT);
 	}
 
 	public static function drawBar($score = 0) {
 		switch ($score) {
 			case $score <= 50:
-				$class = "progress-bar progress-bar-danger"; break;
+				$class = "progress-bar progress-bar-danger";
+			break;
 			case $score <= 75:
-				$class = "progress-bar-warning"; break;
+				$class = "progress-bar-warning";
+			break;
 			case $score <= 100:
-				$class = "progress-bar-success"; break;
+				$class = "progress-bar-success";
+			break;
 		}
 
 		return '
