@@ -92,7 +92,7 @@ class Dnsbls {
 	}
 
 	public static function reverseIp($ip) {
-		return implode('.', array_reverse(explode ('.', $ip)));
+		return implode('.', array_reverse(explode('.', $ip)));
 	}
 
 	public static function getScore($ip) {
