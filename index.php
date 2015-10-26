@@ -1,72 +1,61 @@
-<!DOCTYPE html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta http-equiv="X-UA-Compatible" content="IE=edge">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<meta name="description" content="DNSBLS - DNS Blacklist and Sender Score">
-		<title>DNSBLS - DNS Blacklist and Sender Score</title>
+<?php
 
-		<link href="//netdna.bootstrapcdn.com/bootswatch/3.1.1/lumen/bootstrap.min.css" rel="stylesheet">
+require 'vendor/autoload.php';
+require 'functions.php';
 
-		<style type="text/css" media="screen">
-			body {padding-top: 10px;}
-		</style>
-	</head>
-	<body>
-		<div class="container">
-			<div class="well">
-				<h2>DNS Blacklist and Sender Score</h2>
-				<form method="post" action="index.php" class="form-inline" autocomplete="on" role="form">
-					<label>IP or domain address: </label>
-					<input id="host" name="host" placeholder="Enter IP or Domain..." class="form-control" required="" >
-					<button id="submit" name="submit" class="btn btn-primary">Check Now!</button>
-				</form>
-				<p>* Sender Score is taken from: <a href="http://www.senderscore.org/" target="_blank">senderscore.org</a></p>
-			</div>
-			<?php
-			require_once "class.php";
-			$host = !empty($_REQUEST['host']) ? $_REQUEST['host'] : null;
+// Create container
+$container = new \Slim\Container;
 
-			if (isset($host)) {
-				if (Dnsbls::validateIp($host)) {
-					echo "<p>IP: " . gethostbyname($host) . "</p>";
-					if (Dnsbls::getScore($host)) {
-						echo Dnsbls::drawBar(Dnsbls::getScore($host)); ?>
-					<?php } else {
-						echo
-						'<div class="alert alert-warning">
-							<strong>No Score</strong> - Insufficient Email Seen
-						</div>';
-					} ?>
+// Register component on container
+$container['view'] = function ($c) {
+    $view = new \Slim\Views\Twig('templates', [
+        'cache' => false
+    ]);
 
-					<table class="table table-striped table-bordered table-condensed table-hover">
-						<?php
-						//ini_set('zlib.output_compression', 0);
-						//ini_set('output_buffering', 0);
-						ob_implicit_flush(true);
-						ob_end_flush(); // Clean buffer
-						foreach (Dnsbls::$list as $rbl) {
-							$checkBl = Dnsbls::checkBl($host, $rbl);
-							if ($checkBl) {
-								echo "<tr class=\"danger\"><td>$rbl</td><td><span class=\"label label-warning\"><span class=\"glyphicon glyphicon-warning-sign\"></span> Listed</span></td></tr>";
-							} else {
-								echo "<tr><td>$rbl</td><td><span class=\"label label-success\">OK</span></td></tr>";
-							}
-							echo str_repeat(" ", 4096) . PHP_EOL;
-							usleep(250000);
-						} ?>
-					</table>
+    $view->addExtension(new \Slim\Views\TwigExtension(
+        $c['router'],
+        $c['request']->getUri()
+    ));
 
-				<?php } else {
-					echo "<div class=\"alert alert-danger\">Error: Invalid, private or reserved IP or domain address</div>\n";
-				}
+    return $view;
+};
 
-			} ?>
-			<hr />
-			<footer>
-				<p>Created by <a href="http://www.venehosting.com/" title="VeneHosting.com" target="_blank">VeneHosting.com</a></p>
-			</footer>
-		</div>
-	</body>
-</html>
+$app = new \Slim\App($container);
+
+$app->get('/', function ($request, $response, $args) {
+    return $this->view->render($response, 'index.html', [
+
+    ]);
+});
+
+$app->get('/score/{ip}', function ($request, $response, $args) {
+    $score = Dnsbls::getScore($args['ip']);
+    $response->write(json_encode(['ip' => $args['ip'], 'score' => $score]));
+    return $response->withHeader('Content-type', 'application/json');
+});
+
+$app->get('/validate/{ip}', function ($request, $response, $args) {
+    $validate = Dnsbls::validateIp($args['ip']);
+
+    $ip = $args['ip'];
+    if ($validate) {
+        $ip = gethostbyname($args['ip']);
+    }
+
+    $response->write(json_encode(['ip' => $ip, 'validate' => $validate]));
+    return $response->withHeader('Content-type', 'application/json');
+});
+
+$app->get('/query/{host}/{ip}', function ($request, $response, $args) {
+    $status = (Dnsbls::checkBl($args['ip'], $args['host'])) ? 'LISTED' : 'OK';
+    $response->write(json_encode(['host' => $args['host'], 'status' => $status]));
+    return $response->withHeader('Content-type', 'application/json');
+});
+
+$app->get('/test', function ($request, $response, $args) {
+    $x = Dnsbls::validateIp('google.ca');
+    //$x = Dnsbls::validateIp('2.2.2.2');
+    var_dump($x);
+});
+
+$app->run();
