@@ -88,10 +88,8 @@ $( "form" ).submit(function( event ) {
 		return false;
 	};
 
-	var ip = $( "input:first" ).val() ;
 	$('table > tbody:last-child').html('');
-
-	validate(ip);
+	validate($( "input:first" ).val());
 
 	$( "input:first" ).val('') ;
 	$('#resolvedIp').text('');
@@ -105,14 +103,8 @@ function query(host, ip) {
 	$.ajax({
 		url: 'query/'+ host + '/' + ip,
 		dataType: 'json',
-		//async: false,
-		beforeSend: function(){
-			$("#loadingbar").show();
-		},
-		complete: function(){
-			$("#loadingbar").hide();
-		},
 		success: function(data) {
+			console.log(data);
 			if (data.status == 'OK') {
 				var icon = '<i class="material-icons">done_all</i>';
 				var color = goodColor;
@@ -121,7 +113,6 @@ function query(host, ip) {
 				var color = badColor;
 			}
 			$('table > tbody:last-child').append('<tr><td>'+data.host+'</td><td><div class="chip white-text '+color+'">'+icon+data.status+'</div></td></tr>');
-			console.log( data );
 		}
 	});
 }
@@ -131,6 +122,7 @@ function getScore(ip) {
 		url: 'score/' + ip,
 		dataType: 'json',
 		success: function(data) {
+			console.log( data );
 			if (data.score == false) {
 				$('#score').text('Insufficient Email Seen').addClass('disabled');
 			} else {
@@ -142,7 +134,6 @@ function getScore(ip) {
 					$('#score').text(data.score + '%').removeClass('disabled').addClass(goodColor);
 				}
 			}
-			console.log( data );
 		}
 	});
 }
@@ -157,17 +148,18 @@ function validate(ip) {
 				$('#host').addClass('invalid');
 				return false;
 			} else {
+				//$("#loadingbar").show();
 				$('#results-container').removeClass('hide');
 				getScore(data.ip);
 				$('#resolvedIp').text(data.ip);
 				$.each( dnsbl, function( key, host ) {
 					query(host, data.ip);
 				});
+				$("#loadingbar").hide();
 			}
-		}
+		},
+		beforeSend: function(){
+			$("#loadingbar").show();
+		},
 	});
 }
-
-$( document ).ready(function() {
-	$( "input:first" ).val('') ;
-});

@@ -52,10 +52,4 @@ $app->get('/query/{host}/{ip}', function ($request, $response, $args) {
     return $response->withHeader('Content-type', 'application/json');
 });
 
-$app->get('/test', function ($request, $response, $args) {
-    $x = Dnsbls::validateIp('google.ca');
-    //$x = Dnsbls::validateIp('2.2.2.2');
-    var_dump($x);
-});
-
 $app->run();
