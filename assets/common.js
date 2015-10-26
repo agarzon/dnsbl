@@ -105,7 +105,7 @@ function query(host, ip) {
 	$.ajax({
 		url: 'query/'+ host + '/' + ip,
 		dataType: 'json',
-		async: false,
+		//async: false,
 		beforeSend: function(){
 			$("#loadingbar").show();
 		},
