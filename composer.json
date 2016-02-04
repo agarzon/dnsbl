@@ -7,7 +7,7 @@
     "authors": [
         {
             "name": "Alexander Garzon",
-            "email": "agarzon@php.net",
+            "email": "agarzon@php.net"
         }
     ],
     "require": {
