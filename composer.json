@@ -1,14 +1,13 @@
 {
-    "name": "slim/slim-skeleton",
-    "description": "A Slim Framework skeleton application for rapid development",
-    "keywords": ["microframework","rest","router", "psr7"],
-    "homepage": "http://github.com/slimphp/Slim-Skeleton",
+    "name": "agarzon/dnsbl",
+    "description": "DNS Blacklist and Sender Score",
+    "keywords": ["dnsbl","senderscore","spam", "reputation"],
+    "homepage": "https://github.com/agarzon/dnsbl",
     "license": "MIT",
     "authors": [
         {
-            "name": "Josh Lockhart",
-            "email": "info@joshlockhart.com",
-            "homepage": "http://www.joshlockhart.com/"
+            "name": "Alexander Garzon",
+            "email": "agarzon@php.net",
         }
     ],
     "require": {
