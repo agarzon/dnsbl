@@ -2,9 +2,9 @@
 /**
  * Slim Framework (http://slimframework.com)
  *
- * @link      https://github.com/codeguy/Slim
- * @copyright Copyright (c) 2011-2015 Josh Lockhart
- * @license   https://github.com/codeguy/Slim/blob/master/LICENSE (MIT License)
+ * @link      https://github.com/slimphp/Slim
+ * @copyright Copyright (c) 2011-2016 Josh Lockhart
+ * @license   https://github.com/slimphp/Slim/blob/3.x/LICENSE.md (MIT License)
  */
 namespace Slim\Interfaces;
 
@@ -24,6 +24,15 @@ interface RouteGroupInterface
      * @return string
      */
     public function getPattern();
+
+    /**
+     * Prepend middleware to the group middleware collection
+     *
+     * @param mixed $callable The callback routine
+     *
+     * @return RouteGroupInterface
+     */
+    public function add($callable);
 
     /**
      * Execute route group callable in the context of the Slim App

@@ -2,13 +2,12 @@
 /**
  * Slim Framework (http://slimframework.com)
  *
- * @link      https://github.com/codeguy/Slim
- * @copyright Copyright (c) 2011-2015 Josh Lockhart
- * @license   https://github.com/codeguy/Slim/blob/master/LICENSE (MIT License)
+ * @link      https://github.com/slimphp/Slim
+ * @copyright Copyright (c) 2011-2016 Josh Lockhart
+ * @license   https://github.com/slimphp/Slim/blob/3.x/LICENSE.md (MIT License)
  */
 namespace Slim;
 
-use Closure;
 use Exception;
 use InvalidArgumentException;
 use Psr\Http\Message\ServerRequestInterface;
@@ -22,9 +21,7 @@ use Slim\Interfaces\RouteInterface;
  */
 class Route extends Routable implements RouteInterface
 {
-    use MiddlewareAwareTrait {
-        add as addMiddleware;
-    }
+    use MiddlewareAwareTrait;
 
     /**
      * HTTP methods supported by this route
@@ -32,6 +29,13 @@ class Route extends Routable implements RouteInterface
      * @var string[]
      */
     protected $methods = [];
+
+    /**
+     * Route identifier
+     *
+     * @var string
+     */
+    protected $identifier;
 
     /**
      * Route name
@@ -46,6 +50,8 @@ class Route extends Routable implements RouteInterface
      * @var RouteGroup[]
      */
     protected $groups;
+
+    private $finalized = false;
 
     /**
      * Output buffering mode
@@ -69,34 +75,16 @@ class Route extends Routable implements RouteInterface
      * @param string[]     $methods The route HTTP methods
      * @param string       $pattern The route pattern
      * @param callable     $callable The route callable
+     * @param int          $identifier The route identifier
      * @param RouteGroup[] $groups The parent route groups
      */
-    public function __construct($methods, $pattern, $callable, $groups = [])
+    public function __construct($methods, $pattern, $callable, $groups = [], $identifier = 0)
     {
         $this->methods  = $methods;
         $this->pattern  = $pattern;
         $this->callable = $callable;
         $this->groups   = $groups;
-    }
-
-    /**
-     * Add middleware
-     *
-     * This method prepends new middleware to the route's middleware stack.
-     *
-     * @param mixed $callable The callback routine
-     *
-     * @return RouteInterface
-     */
-    public function add($callable)
-    {
-        $callable = $this->resolveCallable($callable);
-        if ($callable instanceof Closure) {
-            $callable = $callable->bindTo($this->container);
-        }
-
-        $this->middleware[] = $callable;
-        return $this;
+        $this->identifier = 'route' . $identifier;
     }
 
     /**
@@ -104,14 +92,22 @@ class Route extends Routable implements RouteInterface
      */
     public function finalize()
     {
-        foreach ($this->getGroups() as $group) {
-            foreach ($group->getMiddleware() as $middleware) {
-                array_unshift($this->middleware, $middleware);
-            }
+        if ($this->finalized) {
+            return;
         }
+
+        $groupMiddleware = [];
+        foreach ($this->getGroups() as $group) {
+            $groupMiddleware = array_merge($group->getMiddleware(), $groupMiddleware);
+        }
+
+        $this->middleware = array_merge($this->middleware, $groupMiddleware);
+
         foreach ($this->getMiddleware() as $middleware) {
             $this->addMiddleware($middleware);
         }
+
+        $this->finalized = true;
     }
 
     /**
@@ -152,6 +148,16 @@ class Route extends Routable implements RouteInterface
     public function getName()
     {
         return $this->name;
+    }
+
+    /**
+     * Get route identifier
+     *
+     * @return string
+     */
+    public function getIdentifier()
+    {
+        return $this->identifier;
     }
 
     /**
@@ -284,6 +290,9 @@ class Route extends Routable implements RouteInterface
      */
     public function run(ServerRequestInterface $request, ResponseInterface $response)
     {
+        // Finalise route now that we are about to run it
+        $this->finalize();
+
         // Traverse middleware stack and fetch updated response
         return $this->callMiddlewareStack($request, $response);
     }
@@ -326,10 +335,12 @@ class Route extends Routable implements RouteInterface
             $response = $newResponse;
         } elseif (is_string($newResponse)) {
             // if route callback returns a string, then append it to the response
-            $response->getBody()->write($newResponse);
+            if ($response->getBody()->isWritable()) {
+                $response->getBody()->write($newResponse);
+            }
         }
 
-        if (!empty($output)) {
+        if (!empty($output) && $response->getBody()->isWritable()) {
             if ($this->outputBuffering === 'prepend') {
                 // prepend output buffer content
                 $body = new Http\Body(fopen('php://temp', 'r+'));

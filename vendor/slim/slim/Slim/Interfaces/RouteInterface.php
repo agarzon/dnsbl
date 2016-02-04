@@ -2,9 +2,9 @@
 /**
  * Slim Framework (http://slimframework.com)
  *
- * @link      https://github.com/codeguy/Slim
- * @copyright Copyright (c) 2011-2015 Josh Lockhart
- * @license   https://github.com/codeguy/Slim/blob/master/LICENSE (MIT License)
+ * @link      https://github.com/slimphp/Slim
+ * @copyright Copyright (c) 2011-2016 Josh Lockhart
+ * @license   https://github.com/slimphp/Slim/blob/3.x/LICENSE.md (MIT License)
  */
 namespace Slim\Interfaces;
 
@@ -82,12 +82,36 @@ interface RouteInterface
     public function setName($name);
 
     /**
+     * Add middleware
+     *
+     * This method prepends new middleware to the route's middleware stack.
+     *
+     * @param mixed $callable The callback routine
+     *
+     * @return RouteInterface
+     */
+    public function add($callable);
+
+    /**
      * Prepare the route for use
      *
      * @param ServerRequestInterface $request
      * @param array $arguments
      */
     public function prepare(ServerRequestInterface $request, array $arguments);
+
+    /**
+     * Run route
+     *
+     * This method traverses the middleware stack, including the route's callable
+     * and captures the resultant HTTP response object. It then sends the response
+     * back to the Application.
+     *
+     * @param ServerRequestInterface $request
+     * @param ResponseInterface $response
+     * @return ResponseInterface
+     */
+    public function run(ServerRequestInterface $request, ResponseInterface $response);
 
     /**
      * Dispatch route callable against current Request and Response objects

@@ -13,7 +13,7 @@ SCREENSHOT
 TODO
 ----
 - [x] Move to micro-framework
-- [x] API 
+- [x] API
 - [x] "in process" bar while buffering
 - [x] AJAX instead PHP buffer
 - [x] return reverse PTR when IP is entered

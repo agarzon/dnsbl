@@ -2,12 +2,13 @@
 /**
  * Slim Framework (http://slimframework.com)
  *
- * @link      https://github.com/codeguy/Slim
- * @copyright Copyright (c) 2011-2015 Josh Lockhart
- * @license   https://github.com/codeguy/Slim/blob/master/LICENSE (MIT License)
+ * @link      https://github.com/slimphp/Slim
+ * @copyright Copyright (c) 2011-2016 Josh Lockhart
+ * @license   https://github.com/slimphp/Slim/blob/3.x/LICENSE.md (MIT License)
  */
 namespace Slim;
 
+use FastRoute\Dispatcher;
 use InvalidArgumentException;
 use RuntimeException;
 use Psr\Http\Message\ServerRequestInterface;
@@ -15,8 +16,7 @@ use FastRoute\RouteCollector;
 use FastRoute\RouteParser;
 use FastRoute\RouteParser\Std as StdParser;
 use FastRoute\DataGenerator;
-use FastRoute\DataGenerator\GroupCountBased as GroupCountBasedGenerator;
-use FastRoute\Dispatcher\GroupCountBased as GroupCountBasedDispatcher;
+use Slim\Interfaces\RouteGroupInterface;
 use Slim\Interfaces\RouterInterface;
 use Slim\Interfaces\RouteInterface;
 
@@ -28,14 +28,14 @@ use Slim\Interfaces\RouteInterface;
  * finding routes that match the current HTTP request, and creating
  * URLs for a named route.
  */
-class Router extends RouteCollector implements RouterInterface
+class Router implements RouterInterface
 {
     /**
      * Parser
      *
      * @var \FastRoute\RouteParser
      */
-    private $routeParser;
+    protected $routeParser;
 
     /**
      * Base path used in pathFor()
@@ -52,6 +52,12 @@ class Router extends RouteCollector implements RouterInterface
     protected $routes = [];
 
     /**
+     * Route counter incrementer
+     * @var int
+     */
+    protected $routeCounter = 0;
+
+    /**
      * Named routes
      *
      * @var null|Route[]
@@ -65,20 +71,19 @@ class Router extends RouteCollector implements RouterInterface
      */
     protected $routeGroups = [];
 
-    private $finalized = false;
+    /**
+     * @var \FastRoute\Dispatcher
+     */
+    protected $dispatcher;
 
     /**
      * Create new router
      *
      * @param RouteParser   $parser
-     * @param DataGenerator $generator
      */
-    public function __construct(RouteParser $parser = null, DataGenerator $generator = null)
+    public function __construct(RouteParser $parser = null)
     {
-        $parser = $parser ? $parser : new StdParser;
-        $generator = $generator ? $generator : new GroupCountBasedGenerator;
-        parent::__construct($parser, $generator);
-        $this->routeParser = $parser;
+        $this->routeParser = $parser ?: new StdParser;
     }
 
     /**
@@ -118,34 +123,18 @@ class Router extends RouteCollector implements RouterInterface
 
         // Prepend parent group pattern(s)
         if ($this->routeGroups) {
-            // If any route in the group only has / we remove it
-            if ($pattern === '/') {
-                $pattern = '';
-            }
             $pattern = $this->processGroups() . $pattern;
         }
 
+        // According to RFC methods are defined in uppercase (See RFC 7231)
+        $methods = array_map("strtoupper", $methods);
+
         // Add route
-        $route = new Route($methods, $pattern, $handler, $this->routeGroups);
-        $this->routes[] = $route;
+        $route = new Route($methods, $pattern, $handler, $this->routeGroups, $this->routeCounter);
+        $this->routes[$route->getIdentifier()] = $route;
+        $this->routeCounter++;
 
         return $route;
-    }
-
-    /**
-     * Finalize registered routes in preparation for dispatching
-     *
-     * NOTE: The routes can only be finalized once.
-     */
-    public function finalize()
-    {
-        if (!$this->finalized) {
-            foreach ($this->getRoutes() as $route) {
-                $route->finalize();
-                $this->addRoute($route->getMethods(), $route->getPattern(), [$route, 'run']);
-            }
-            $this->finalized = true;
-        }
     }
 
     /**
@@ -159,12 +148,34 @@ class Router extends RouteCollector implements RouterInterface
      */
     public function dispatch(ServerRequestInterface $request)
     {
-        $this->finalize();
-
-        $dispatcher = new GroupCountBasedDispatcher($this->getData());
         $uri = '/' . ltrim($request->getUri()->getPath(), '/');
         
-        return $dispatcher->dispatch($request->getMethod(), $uri);
+        return $this->createDispatcher()->dispatch(
+            $request->getMethod(),
+            $uri
+        );
+    }
+
+    /**
+     * @return \FastRoute\Dispatcher
+     */
+    protected function createDispatcher()
+    {
+        return $this->dispatcher ?: \FastRoute\simpleDispatcher(function (RouteCollector $r) {
+            foreach ($this->getRoutes() as $route) {
+                $r->addRoute($route->getMethods(), $route->getPattern(), $route->getIdentifier());
+            }
+        }, [
+          'routeParser' => $this->routeParser
+        ]);
+    }
+
+    /**
+     * @param \FastRoute\Dispatcher $dispatcher
+     */
+    public function setDispatcher(Dispatcher $dispatcher)
+    {
+        $this->dispatcher = $dispatcher;
     }
 
     /**
@@ -217,7 +228,7 @@ class Router extends RouteCollector implements RouterInterface
      * @param string   $pattern
      * @param callable $callable
      *
-     * @return RouteGroup
+     * @return RouteGroupInterface
      */
     public function pushGroup($pattern, $callable)
     {
@@ -238,7 +249,19 @@ class Router extends RouteCollector implements RouterInterface
     }
 
     /**
-     * Build the path for a named route
+     * @param $identifier
+     * @return \Slim\Interfaces\RouteInterface
+     */
+    public function lookupRoute($identifier)
+    {
+        if (!isset($this->routes[$identifier])) {
+            throw new RuntimeException('Route not found, looks like your route cache is stale.');
+        }
+        return $this->routes[$identifier];
+    }
+
+    /**
+     * Build the path for a named route excluding the base path
      *
      * @param string $name        Route name
      * @param array  $data        Named argument replacement data
@@ -249,7 +272,7 @@ class Router extends RouteCollector implements RouterInterface
      * @throws RuntimeException         If named route does not exist
      * @throws InvalidArgumentException If required data not provided
      */
-    public function pathFor($name, array $data = [], array $queryParams = [])
+    public function relativePathFor($name, array $data = [], array $queryParams = [])
     {
         $route = $this->getNamedRoute($name);
         $pattern = $route->getPattern();
@@ -293,12 +316,32 @@ class Router extends RouteCollector implements RouterInterface
         }
         $url = implode('', $segments);
 
-        if ($this->basePath) {
-            $url = $this->basePath . $url;
-        }
-
         if ($queryParams) {
             $url .= '?' . http_build_query($queryParams);
+        }
+
+        return $url;
+    }
+
+
+    /**
+     * Build the path for a named route including the base path
+     *
+     * @param string $name        Route name
+     * @param array  $data        Named argument replacement data
+     * @param array  $queryParams Optional query string parameters
+     *
+     * @return string
+     *
+     * @throws RuntimeException         If named route does not exist
+     * @throws InvalidArgumentException If required data not provided
+     */
+    public function pathFor($name, array $data = [], array $queryParams = [])
+    {
+        $url = $this->relativePathFor($name, $data, $queryParams);
+
+        if ($this->basePath) {
+            $url = $this->basePath . $url;
         }
 
         return $url;

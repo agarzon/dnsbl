@@ -2,16 +2,15 @@
 /**
  * Slim Framework (http://slimframework.com)
  *
- * @link      https://github.com/codeguy/Slim
- * @copyright Copyright (c) 2011-2015 Josh Lockhart
- * @license   https://github.com/codeguy/Slim/blob/master/LICENSE (MIT License)
+ * @link      https://github.com/slimphp/Slim
+ * @copyright Copyright (c) 2011-2016 Josh Lockhart
+ * @license   https://github.com/slimphp/Slim/blob/3.x/LICENSE.md (MIT License)
  */
 namespace Slim\Interfaces;
 
 use RuntimeException;
 use InvalidArgumentException;
 use Psr\Http\Message\ServerRequestInterface;
-use Slim\RouteGroup;
 
 /**
  * Router Interface
@@ -49,7 +48,7 @@ interface RouterInterface
      * @param string   $pattern The group pattern
      * @param callable $callable A group callable
      *
-     * @return RouteGroup
+     * @return RouteGroupInterface
      */
     public function pushGroup($pattern, $callable);
 
@@ -65,14 +64,35 @@ interface RouterInterface
      *
      * @param string $name        Route name
      *
-     * @return Route
+     * @return \Slim\Interfaces\RouteInterface
      *
      * @throws RuntimeException   If named route does not exist
      */
     public function getNamedRoute($name);
 
     /**
-     * Build the path for a named route
+     * @param $identifier
+     *
+     * @return \Slim\Interfaces\RouteInterface
+     */
+    public function lookupRoute($identifier);
+
+    /**
+     * Build the path for a named route excluding the base path
+     *
+     * @param string $name        Route name
+     * @param array  $data        Named argument replacement data
+     * @param array  $queryParams Optional query string parameters
+     *
+     * @return string
+     *
+     * @throws RuntimeException         If named route does not exist
+     * @throws InvalidArgumentException If required data not provided
+     */
+    public function relativePathFor($name, array $data = [], array $queryParams = []);
+
+    /**
+     * Build the path for a named route including the base path
      *
      * @param string $name        Route name
      * @param array  $data        Named argument replacement data
