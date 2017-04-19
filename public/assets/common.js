@@ -126,7 +126,7 @@ function getScore(ip) {
 			if (data.score == false) {
 				$('#score').text('Insufficient Email Seen').addClass('disabled');
 			} else {
-				if (data.score <= 80) {
+				if (data.score <= 75) {
 					var icon = '<i class="material-icons">warning</i>';
 					$('#score').text(data.score + '%').removeClass('disabled').addClass(badColor);
 				} else {
